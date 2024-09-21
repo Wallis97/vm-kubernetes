@@ -7,7 +7,7 @@ NODE_COUNT = 2
 Vagrant.configure("2") do |config|
 
 
-  config.vm.provider "libvirt"
+  # config.vm.provider "libvirt"
 
   config.vm.define "controlplane" do |subconfig|
 
@@ -23,6 +23,14 @@ Vagrant.configure("2") do |config|
     subconfig.vm.hostname = "controlplane"
     subconfig.vm.network :private_network, ip: "10.0.0.10"
 
+    # subconfig.vm.provision :ansible do |ansible|
+    #   ansible.playbook = "./ansible/playbooks/controlplane-setup.yml"
+    #   ansible.groups = {
+    #     "cp" => ["controlplane"],
+    #     "workers" => ["worker[1:#{NODE_COUNT}]"],
+    #     "nodes:children" => ["cp", "workers"]
+    #   }
+    # end
   end
 
   (1..NODE_COUNT).each do |i|
@@ -38,13 +46,23 @@ Vagrant.configure("2") do |config|
       subconfig.vm.box = BOX_IMAGE
       subconfig.vm.hostname = "worker#{i}"
       subconfig.vm.network :private_network, ip: "10.0.0.#{i + 10}"
+
+      # subconfig.vm.provision :ansible do |ansible|
+      #   ansible.playbook = "./ansible/playbooks/worker-setup.yml"
+      #   # ansible.groups = {
+      #   #   "workers" => ["worker[1:#{NODE_COUNT}]"],
+      #   # }
+      # end
     end
 
-    config.vm.provision "ansible" do |ansible|
-      ansible.playbook = "./.vagrant/provisioners/ansible/playbooks/cluster-setup.yml"
+    config.vm.provision :ansible do |ansible|
+      ansible.playbook = "./ansible/playbooks/cluster-setup.yml"
+      ansible.inventory_path = ".vagrant/provisioners/ansible/inventory/vagrant_ansible_inventory"
+      ansible.compatibility_mode = '2.0'
+      ansible.limit = 'all'
       ansible.groups = {
         "cp" => ["controlplane"],
-        "workers" => ["worker[1:#{NODE_COUNT + 1}]"],
+        "workers" => ["worker[1:#{NODE_COUNT}]"],
         "nodes:children" => ["cp", "workers"]
       }
     end
